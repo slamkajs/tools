@@ -235,6 +235,8 @@ class PasswordableBehavior extends ModelBehavior {
 	 */
 	public function setup(Model $Model, $config = array()) {
 		$defaults = $this->_defaults;
+		$rulesConfig = (isset($config['rules']) ? $config['rules'] : array());
+
 		if ($configureDefaults = Configure::read('Passwordable')) {
 			$defaults = Set::merge($defaults, $configureDefaults);
 		}
@@ -249,10 +251,21 @@ class PasswordableBehavior extends ModelBehavior {
 		$formFieldRepeat = $this->settings[$Model->alias]['formFieldRepeat'];
 		$formFieldCurrent = $this->settings[$Model->alias]['formFieldCurrent'];
 
+
+		//if(isset($this->settings[$Model->alias]['rules'])) var_dump($this->settings[$Model->alias]['rules']);
 		$rules = $this->_validationRules;
 		foreach ($rules as $field => $fieldRules) {
 			foreach ($fieldRules as $key => $rule) {
+				$ruleType = (is_array($rule['rule']) ? $rule['rule'][0] : $rule['rule']);
 				$rule['allowEmpty'] = !$this->settings[$Model->alias]['require'];
+				
+				if(array_key_exists($field, $rulesConfig) && array_key_exists($ruleType, $rulesConfig[$field])) {
+					if(is_array($rule['message'])) {
+						$rule['message'][0] = $rulesConfig[$field][$ruleType]['message'];
+					} else {
+						$rule['message'] = $rulesConfig[$field][$ruleType]['message'];
+					}
+				}
 
 				if ($key === 'between') {
 					$rule['rule'][1] = $this->settings[$Model->alias]['minLength'];
