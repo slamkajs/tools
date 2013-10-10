@@ -235,8 +235,6 @@ class PasswordableBehavior extends ModelBehavior {
 	 */
 	public function setup(Model $Model, $config = array()) {
 		$defaults = $this->_defaults;
-		$rulesConfig = (isset($config['rules']) ? $config['rules'] : array());
-
 		if ($configureDefaults = Configure::read('Passwordable')) {
 			$defaults = Set::merge($defaults, $configureDefaults);
 		}
@@ -251,21 +249,10 @@ class PasswordableBehavior extends ModelBehavior {
 		$formFieldRepeat = $this->settings[$Model->alias]['formFieldRepeat'];
 		$formFieldCurrent = $this->settings[$Model->alias]['formFieldCurrent'];
 
-
-		//if(isset($this->settings[$Model->alias]['rules'])) var_dump($this->settings[$Model->alias]['rules']);
 		$rules = $this->_validationRules;
 		foreach ($rules as $field => $fieldRules) {
 			foreach ($fieldRules as $key => $rule) {
-				$ruleType = (is_array($rule['rule']) ? $rule['rule'][0] : $rule['rule']);
 				$rule['allowEmpty'] = !$this->settings[$Model->alias]['require'];
-				
-				if(array_key_exists($field, $rulesConfig) && array_key_exists($ruleType, $rulesConfig[$field])) {
-					if(is_array($rule['message'])) {
-						$rule['message'][0] = $rulesConfig[$field][$ruleType]['message'];
-					} else {
-						$rule['message'] = $rulesConfig[$field][$ruleType]['message'];
-					}
-				}
 
 				if ($key === 'between') {
 					$rule['rule'][1] = $this->settings[$Model->alias]['minLength'];
@@ -356,6 +343,9 @@ class PasswordableBehavior extends ModelBehavior {
 			}
 		}
 
+		// Update whitelist
+		$this->_modifyWhitelist($Model);
+
 		return true;
 	}
 
@@ -390,21 +380,38 @@ class PasswordableBehavior extends ModelBehavior {
 		}
 
 		// Update whitelist
-		$this->_modifyWhitelist($Model);
+		$this->_modifyWhitelist($Model, true);
 
 		return true;
 	}
 
 	/**
-	 * PasswordableBehavior::_modifyWhitelist()
+	 * Modify the model's whitelist.
+	 *
+	 * Since 2.5 behaviors can also modify the whitelist for validate, thus this behavior can now
+	 * (>= CakePHP 2.5) add the form fields automatically, as well (not just the password field itself).
 	 *
 	 * @param Model $Model
 	 * @return void
 	 */
-	protected function _modifyWhitelist(Model $Model) {
-		$field = $this->settings[$Model->alias]['field'];
-		if (!empty($Model->whitelist) && !in_array($field, $Model->whitelist)) {
-			$Model->whitelist = array_merge($Model->whitelist, array($field));
+	protected function _modifyWhitelist(Model $Model, $onSave = false) {
+		$fields = array();
+		if ($onSave) {
+			$fields[] = $this->settings[$Model->alias]['field'];
+		} else {
+			$fields[] = $this->settings[$Model->alias]['formField'];
+			if ($this->settings[$Model->alias]['confirm']) {
+				$fields[] = $this->settings[$Model->alias]['formFieldRepeat'];
+			}
+			if ($this->settings[$Model->alias]['current']) {
+				$fields[] = $this->settings[$Model->alias]['formFieldCurrent'];
+			}
+		}
+
+		foreach ($fields as $field) {
+			if (!empty($Model->whitelist) && !in_array($field, $Model->whitelist)) {
+				$Model->whitelist = array_merge($Model->whitelist, array($field));
+			}
 		}
 	}
 
