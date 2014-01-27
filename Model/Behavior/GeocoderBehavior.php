@@ -92,7 +92,7 @@ class GeocoderBehavior extends ModelBehavior {
 		// Make sure all address fields are available
 		if ($this->settings[$Model->alias]['real']) {
 			foreach ($addressfields as $field) {
-				if (!$Model->hasField($field)) {
+				if (!$Model->hasField($field) && !isset($Model->data[$Model->alias][$field])) { // ADDED the and statement | justin slamka 1/26/2014
 					return $return;
 				}
 			}
